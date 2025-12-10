@@ -2,15 +2,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>勤務収入管理アプリ</title>
-
-  <!-- PWA 用 -->
+  <title>勤務収入管理（Googleスプレッドシート送信）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#ffffff" />
-
-  <!-- SheetJS (Excel ライブラリ) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
     body {
@@ -108,6 +101,16 @@
     td.right {
       text-align: right;
     }
+    #status {
+      margin-top: 6px;
+      font-size: 0.85rem;
+    }
+    #status.ok {
+      color: #008000;
+    }
+    #status.err {
+      color: #d00000;
+    }
     @media (max-width: 600px) {
       .form-row {
         flex-direction: column;
@@ -116,7 +119,7 @@
   </style>
 </head>
 <body>
-  <h1>勤務収入管理アプリ</h1>
+  <h1>勤務収入管理（Googleスプレッドシート送信）</h1>
 
   <div class="card">
     <div class="form-row">
@@ -168,14 +171,14 @@
     </div>
 
     <div>
-      <button id="addBtn" type="button">行を追加</button>
-      <button id="clearBtn" type="button">すべて削除</button>
-      <button id="excelBtn" type="button">Excel保存</button>
+      <button id="addBtn" type="button">行を追加してシートに送信</button>
+      <button id="clearBtn" type="button">この端末のデータ全削除</button>
     </div>
+    <div id="status"></div>
   </div>
 
   <div class="card">
-    <h2>明細一覧</h2>
+    <h2>明細一覧（この端末に保存されている分）</h2>
     <table id="detailTable">
       <thead>
         <tr>
@@ -196,7 +199,10 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "shiftIncomeRecords_v2";
+    // ★★★ ここがあなたの Apps Script のURL ★★★
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyz3W185Vp1io-_DDTNt9aLiJbeWayfy2M4A6anRJdzGxO1Xv0Ose1GFoWSApoFL98ERA/exec";
+
+    const STORAGE_KEY = "shiftIncomeRecords_v_gas";
     let records = [];
 
     function pad2(n) { return n.toString().padStart(2,"0"); }
@@ -318,76 +324,41 @@
       });
     }
 
-    function buildDailySummary(){
-      const map={};
-      records.forEach(r=>{
-        if(!map[r.date]) map[r.date]={};
-        if(!map[r.date][r.place]) map[r.date][r.place]={hours:0,income:0};
-        map[r.date][r.place].hours+=r.workHours;
-        map[r.date][r.place].income+=r.income;
-      });
-      const rows=[];
-      Object.keys(map).sort().forEach(date=>{
-        Object.keys(map[date]).forEach(place=>{
-          const s=map[date][place];
-          rows.push({
-            日付:date,
-            出勤場所:place,
-            勤務時間合計h:Number(s.hours.toFixed(2)),
-            収入合計円:Math.round(s.income)
-          });
-        });
-      });
-      return rows;
+    function setStatus(msg, ok){
+      const s = document.getElementById("status");
+      s.textContent = msg || "";
+      s.className = "";
+      if(!msg) return;
+      s.classList.add(ok ? "ok" : "err");
     }
 
-    function exportToExcel(){
-      if(records.length===0){
-        alert("明細が1件もありません。まず行を追加してください。");
-        return;
+    async function sendToSpreadsheet(record){
+      // Apps Script の doPost(e) で e.parameter.xxx として受け取る想定
+      const data = new URLSearchParams();
+      data.append("timestamp", record.timestamp);
+      data.append("date",      record.date);
+      data.append("place",     record.place);
+      data.append("startTime", record.startTime);
+      data.append("endTime",   record.endTime);
+      data.append("workHours", record.workHours.toFixed(2));
+      data.append("wage",      String(record.wage));
+      data.append("income",    String(record.income));
+
+      try {
+        const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors", // レスポンスは見えなくていいので no-cors で簡単にする
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: data.toString()
+        });
+        // no-cors なので res.ok 等は見えない。エラーが出なければ成功とみなす。
+        setStatus("スプレッドシートに送信しました。", true);
+      } catch (e) {
+        console.error(e);
+        setStatus("スプレッドシートへの送信に失敗しました。あとで確認してください。", false);
       }
-
-      const all = records.map((r,idx)=>({
-        No:idx+1,
-        記入日時:r.timestamp,
-        日付:r.date,
-        出勤場所:r.place,
-        出勤時刻:r.startTime,
-        退勤時刻:r.endTime,
-        勤務時間h:Number(r.workHours.toFixed(2)),
-        時給円:r.wage,
-        収入円:r.income
-      }));
-
-      const wb = XLSX.utils.book_new();
-      const wsAll = XLSX.utils.json_to_sheet(all);
-      XLSX.utils.book_append_sheet(wb, wsAll, "明細一覧");
-
-      const jumbo = all.filter(r=>r.出勤場所==="ジャンボ総本店");
-      const wsJ  = XLSX.utils.json_to_sheet(jumbo);
-      XLSX.utils.book_append_sheet(wb, wsJ, "ジャンボ総本店");
-
-      const swim = all.filter(r=>r.出勤場所==="スイミング");
-      const wsS  = XLSX.utils.json_to_sheet(swim);
-      XLSX.utils.book_append_sheet(wb, wsS, "スイミング");
-
-      const summary = buildDailySummary();
-      const wsSum = XLSX.utils.json_to_sheet(summary);
-      XLSX.utils.book_append_sheet(wb, wsSum, "日別集計");
-
-      const now=new Date();
-      const fileName=`勤務記録_${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}.xlsx`;
-
-      const wbout = XLSX.write(wb,{bookType:"xlsx",type:"array"});
-      const blob  = new Blob([wbout],{type:"application/octet-stream"});
-      const url   = URL.createObjectURL(blob);
-      const a     = document.createElement("a");
-      a.href=url;
-      a.download=fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
     }
 
     function setupEvents(){
@@ -396,21 +367,22 @@
         if(id==="wage") document.getElementById(id).addEventListener("input",updatePreviews);
       });
 
-      document.getElementById("addBtn").addEventListener("click",()=>{
+      document.getElementById("addBtn").addEventListener("click", async ()=>{
+        setStatus("");
         const now=getNowStrings();
         const place=document.getElementById("place").value;
         const wage=Number(document.getElementById("wage").value);
         const start=getTimeFromSelect("start");
         const end  =getTimeFromSelect("end");
-        if(!place){alert("出勤場所を選択してください。");return;}
-        if(!wage||isNaN(wage)||wage<=0){alert("時給を正しく入力してください。");return;}
-        if(!start||!end){alert("出勤時刻と退勤時刻を選択してください。");return;}
+        if(!place){setStatus("出勤場所を選択してください。",false);return;}
+        if(!wage||isNaN(wage)||wage<=0){setStatus("時給を正しく入力してください。",false);return;}
+        if(!start||!end){setStatus("出勤時刻と退勤時刻を選択してください。",false);return;}
 
         const hours=calcWorkHoursDecimal(start,end);
-        if(hours===null){alert("勤務時間を計算できません。");return;}
+        if(hours===null){setStatus("勤務時間を計算できません。",false);return;}
         const income=Math.round(hours*wage);
 
-        records.push({
+        const record = {
           timestamp:now.timestamp,
           date:now.date,
           place,
@@ -419,10 +391,17 @@
           wage,
           workHours:hours,
           income
-        });
+        };
+
+        // ローカル保存
+        records.push(record);
         saveRecords();
         renderDetailTable();
 
+        // Google スプレッドシートへ送信
+        await sendToSpreadsheet(record);
+
+        // 入力欄リセット
         document.getElementById("startHour").value="";
         document.getElementById("startMinute").value="";
         document.getElementById("endHour").value="";
@@ -433,14 +412,13 @@
       });
 
       document.getElementById("clearBtn").addEventListener("click",()=>{
-        if(confirm("すべての明細を削除しますか？")){
+        if(confirm("この端末に保存されている明細をすべて削除しますか？（スプレッドシートのデータは消えません）")){
           records=[];
           saveRecords();
           renderDetailTable();
+          setStatus("この端末のデータを削除しました。", true);
         }
       });
-
-      document.getElementById("excelBtn").addEventListener("click",exportToExcel);
 
       document.querySelector("#detailTable tbody").addEventListener("click",e=>{
         if(e.target.classList.contains("delRowBtn")){
@@ -454,11 +432,7 @@
       });
     }
 
-    // PWA: service worker 登録
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(()=>{});
-    }
-
+    // 初期化
     initTimeSelects();
     updateNowDisplay();
     setInterval(updateNowDisplay,1000);
