@@ -1,443 +1,452 @@
-<!DOCTYPE html>
-<html lang="ja">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>勤務収入管理（Googleスプレッドシート送信）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
-      padding: 10px;
-      background: #ffffff;
-      color: #000000;
-      font-size: 14px;
-      max-width: 960px;
-      margin: 0 auto;
-    }
-    h1 {
-      font-size: 1.4rem;
-      margin-bottom: 8px;
-    }
-    h2 {
-      font-size: 1.1rem;
-      margin: 16px 0 6px;
-    }
-    .card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 14px;
-    }
-    .form-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .form-group {
-      flex: 1 1 140px;
-      min-width: 140px;
-    }
-    label {
-      display: block;
-      font-size: 0.85rem;
-      margin-bottom: 2px;
-    }
-    select,
-    input[type="number"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 4px 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      font-size: 0.9rem;
-    }
-    .readonly-box {
-      padding: 4px 6px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      background: #f8f8f8;
-      font-size: 0.9rem;
-    }
-    .time-select {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .time-select select {
-      width: auto;
-      min-width: 60px;
-    }
-    .time-select span {
-      padding: 0 2px;
-    }
-    button {
-      cursor: pointer;
-      border-radius: 4px;
-      border: 1px solid #888;
-      padding: 6px 12px;
-      font-size: 0.9rem;
-      background: #f3f3f3;
-      margin-right: 6px;
-    }
-    button:hover {
-      background: #e6e6e6;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-      font-size: 0.85rem;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 4px 6px;
-      vertical-align: top;
-    }
-    th {
-      background: #f5f5f5;
-    }
-    td.right {
-      text-align: right;
-    }
-    #status {
-      margin-top: 6px;
-      font-size: 0.85rem;
-    }
-    #status.ok {
-      color: #008000;
-    }
-    #status.err {
-      color: #d00000;
-    }
-    @media (max-width: 600px) {
-      .form-row {
-        flex-direction: column;
-      }
-    }
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.2">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
   </style>
 </head>
 <body>
-  <h1>勤務収入管理（Googleスプレッドシート送信）</h1>
-
-  <div class="card">
-    <div class="form-row">
-      <div class="form-group">
-        <label>記入日時（自動）</label>
-        <div id="nowDisplay" class="readonly-box"></div>
-      </div>
-      <div class="form-group">
-        <label for="place">出勤場所</label>
-        <select id="place">
-          <option value="">選択してください</option>
-          <option value="ジャンボ総本店">ジャンボ総本店</option>
-          <option value="スイミング">スイミング</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="wage">時給（円）</label>
-        <input type="number" id="wage" min="0" step="1" />
-      </div>
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>出勤時刻</label>
-        <div class="time-select">
-          <select id="startHour"></select>
-          <span>:</span>
-          <select id="startMinute"></select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>退勤時刻</label>
-        <div class="time-select">
-          <select id="endHour"></select>
-          <span>:</span>
-          <select id="endMinute"></select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>勤務時間（時間・自動）</label>
-        <div id="workHoursPreview" class="readonly-box"></div>
-      </div>
-      <div class="form-group">
-        <label>今回収入（円・自動）</label>
-        <div id="incomePreview" class="readonly-box"></div>
-      </div>
-    </div>
-
-    <div>
-      <button id="addBtn" type="button">行を追加してシートに送信</button>
-      <button id="clearBtn" type="button">この端末のデータ全削除</button>
-    </div>
-    <div id="status"></div>
-  </div>
-
-  <div class="card">
-    <h2>明細一覧（この端末に保存されている分）</h2>
-    <table id="detailTable">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>記入日時</th>
-          <th>日付</th>
-          <th>出勤場所</th>
-          <th>出勤時刻</th>
-          <th>退勤時刻</th>
-          <th>勤務時間 (h)</th>
-          <th>時給</th>
-          <th>収入 (円)</th>
-          <th>削除</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <script>
-    // ★★★ ここがあなたの Apps Script のURL ★★★
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyz3W185Vp1io-_DDTNt9aLiJbeWayfy2M4A6anRJdzGxO1Xv0Ose1GFoWSApoFL98ERA/exec";
-
-    const STORAGE_KEY = "shiftIncomeRecords_v_gas";
-    let records = [];
-
-    function pad2(n) { return n.toString().padStart(2,"0"); }
-
-    function getNowStrings() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = pad2(now.getMonth()+1);
-      const d = pad2(now.getDate());
-      const hh = pad2(now.getHours());
-      const mm = pad2(now.getMinutes());
-      const ss = pad2(now.getSeconds());
-      return {
-        date: `${y}-${m}-${d}`,
-        timestamp: `${y}-${m}-${d} ${hh}:${mm}:${ss}`
-      };
-    }
-
-    function updateNowDisplay() {
-      document.getElementById("nowDisplay").textContent = getNowStrings().timestamp;
-    }
-
-    function initTimeSelects() {
-      const sh = document.getElementById("startHour");
-      const eh = document.getElementById("endHour");
-      const sm = document.getElementById("startMinute");
-      const em = document.getElementById("endMinute");
-
-      const emptyH1 = new Option("--","");
-      const emptyH2 = new Option("--","");
-      sh.add(emptyH1); eh.add(emptyH2);
-      for (let h=0; h<24; h++) {
-        const v = pad2(h);
-        sh.add(new Option(v,v));
-        eh.add(new Option(v,v));
-      }
-
-      const emptyM1 = new Option("--","");
-      const emptyM2 = new Option("--","");
-      sm.add(emptyM1); em.add(emptyM2);
-      ["00","15","30","45"].forEach(v=>{
-        sm.add(new Option(v,v));
-        em.add(new Option(v,v));
-      });
-    }
-
-    function getTimeFromSelect(prefix){
-      const h = document.getElementById(prefix+"Hour").value;
-      const m = document.getElementById(prefix+"Minute").value;
-      if(!h || !m) return "";
-      return `${h}:${m}`;
-    }
-
-    function parseTimeToMinutes(t){
-      if(!t) return null;
-      const [h,m] = t.split(":").map(Number);
-      if(isNaN(h)||isNaN(m)) return null;
-      return h*60+m;
-    }
-
-    function calcWorkHoursDecimal(start,end){
-      const s = parseTimeToMinutes(start);
-      const e = parseTimeToMinutes(end);
-      if(s===null||e===null) return null;
-      let diff = e-s;
-      if(diff<=0) diff += 24*60;
-      return Math.round(diff/60*100)/100;
-    }
-
-    function updatePreviews(){
-      const start = getTimeFromSelect("start");
-      const end   = getTimeFromSelect("end");
-      const wage  = Number(document.getElementById("wage").value);
-      const hours = calcWorkHoursDecimal(start,end);
-      const hBox = document.getElementById("workHoursPreview");
-      const iBox = document.getElementById("incomePreview");
-      if(hours===null){
-        hBox.textContent=""; iBox.textContent=""; return;
-      }
-      hBox.textContent = hours.toFixed(2);
-      if(!isNaN(wage)&&wage>0){
-        iBox.textContent = Math.round(hours*wage).toLocaleString();
-      }else{
-        iBox.textContent="";
-      }
-    }
-
-    function saveRecords(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-    }
-
-    function loadRecords(){
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if(raw){
-        try { records = JSON.parse(raw); }
-        catch(e){ records = []; }
-      }
-      renderDetailTable();
-    }
-
-    function renderDetailTable(){
-      const tbody=document.querySelector("#detailTable tbody");
-      tbody.innerHTML="";
-      records.forEach((r,idx)=>{
-        const tr=document.createElement("tr");
-        tr.innerHTML = `
-          <td class="right">${idx+1}</td>
-          <td>${r.timestamp}</td>
-          <td>${r.date}</td>
-          <td>${r.place}</td>
-          <td>${r.startTime}</td>
-          <td>${r.endTime}</td>
-          <td class="right">${r.workHours.toFixed(2)}</td>
-          <td class="right">${r.wage}</td>
-          <td class="right">${r.income.toLocaleString()}</td>
-          <td><button type="button" data-index="${idx}" class="delRowBtn">削除</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function setStatus(msg, ok){
-      const s = document.getElementById("status");
-      s.textContent = msg || "";
-      s.className = "";
-      if(!msg) return;
-      s.classList.add(ok ? "ok" : "err");
-    }
-
-    async function sendToSpreadsheet(record){
-      // Apps Script の doPost(e) で e.parameter.xxx として受け取る想定
-      const data = new URLSearchParams();
-      data.append("timestamp", record.timestamp);
-      data.append("date",      record.date);
-      data.append("place",     record.place);
-      data.append("startTime", record.startTime);
-      data.append("endTime",   record.endTime);
-      data.append("workHours", record.workHours.toFixed(2));
-      data.append("wage",      String(record.wage));
-      data.append("income",    String(record.income));
-
-      try {
-        const res = await fetch(SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors", // レスポンスは見えなくていいので no-cors で簡単にする
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: data.toString()
-        });
-        // no-cors なので res.ok 等は見えない。エラーが出なければ成功とみなす。
-        setStatus("スプレッドシートに送信しました。", true);
-      } catch (e) {
-        console.error(e);
-        setStatus("スプレッドシートへの送信に失敗しました。あとで確認してください。", false);
-      }
-    }
-
-    function setupEvents(){
-      ["startHour","startMinute","endHour","endMinute","wage"].forEach(id=>{
-        document.getElementById(id).addEventListener("change",updatePreviews);
-        if(id==="wage") document.getElementById(id).addEventListener("input",updatePreviews);
-      });
-
-      document.getElementById("addBtn").addEventListener("click", async ()=>{
-        setStatus("");
-        const now=getNowStrings();
-        const place=document.getElementById("place").value;
-        const wage=Number(document.getElementById("wage").value);
-        const start=getTimeFromSelect("start");
-        const end  =getTimeFromSelect("end");
-        if(!place){setStatus("出勤場所を選択してください。",false);return;}
-        if(!wage||isNaN(wage)||wage<=0){setStatus("時給を正しく入力してください。",false);return;}
-        if(!start||!end){setStatus("出勤時刻と退勤時刻を選択してください。",false);return;}
-
-        const hours=calcWorkHoursDecimal(start,end);
-        if(hours===null){setStatus("勤務時間を計算できません。",false);return;}
-        const income=Math.round(hours*wage);
-
-        const record = {
-          timestamp:now.timestamp,
-          date:now.date,
-          place,
-          startTime:start,
-          endTime:end,
-          wage,
-          workHours:hours,
-          income
-        };
-
-        // ローカル保存
-        records.push(record);
-        saveRecords();
-        renderDetailTable();
-
-        // Google スプレッドシートへ送信
-        await sendToSpreadsheet(record);
-
-        // 入力欄リセット
-        document.getElementById("startHour").value="";
-        document.getElementById("startMinute").value="";
-        document.getElementById("endHour").value="";
-        document.getElementById("endMinute").value="";
-        document.getElementById("workHoursPreview").textContent="";
-        document.getElementById("incomePreview").textContent="";
-        updateNowDisplay();
-      });
-
-      document.getElementById("clearBtn").addEventListener("click",()=>{
-        if(confirm("この端末に保存されている明細をすべて削除しますか？（スプレッドシートのデータは消えません）")){
-          records=[];
-          saveRecords();
-          renderDetailTable();
-          setStatus("この端末のデータを削除しました。", true);
-        }
-      });
-
-      document.querySelector("#detailTable tbody").addEventListener("click",e=>{
-        if(e.target.classList.contains("delRowBtn")){
-          const idx=Number(e.target.getAttribute("data-index"));
-          if(!isNaN(idx)){
-            records.splice(idx,1);
-            saveRecords();
-            renderDetailTable();
-          }
-        }
-      });
-    }
-
-    // 初期化
-    initTimeSelects();
-    updateNowDisplay();
-    setInterval(updateNowDisplay,1000);
-    setupEvents();
-    loadRecords();
-  </script>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="ja"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta charset="UTF-8" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;title&gt;勤務収入管理（Excel保存）&lt;/title&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;!-- SheetJS (Excel ライブラリ) --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"&gt;&lt;/script&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>body {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #ffffff;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>color: #000000;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>h1 {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 1.4rem;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-bottom: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>h2 {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 1.1rem;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin: 16px 0 6px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.card {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid #ddd;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-bottom: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.form-row {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>flex-wrap: wrap;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>gap: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-bottom: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.form-group {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>flex: 1 1 140px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>min-width: 140px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>label {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>display: block;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 0.85rem;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-bottom: 2px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>select,</p>
+<p class="p1"><span class="Apple-converted-space">    </span>input[type="number"] {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>box-sizing: border-box;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 4px 6px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid #ccc;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 0.9rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.readonly-box {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 4px 6px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid #ccc;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #f8f8f8;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 0.9rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.time-select {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>gap: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.time-select select {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>width: auto;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>min-width: 60px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.time-select span {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 0 2px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>button {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>cursor: pointer;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-radius: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid #888;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 6px 12px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 0.9rem;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #f3f3f3;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-right: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>button:hover {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #e6e6e6;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>table {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border-collapse: collapse;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>margin-top: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>font-size: 0.85rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>th, td {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>border: 1px solid #ddd;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>padding: 4px 6px;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>vertical-align: top;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>th {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>background: #f5f5f5;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>td.right {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>text-align: right;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>@media (max-width: 600px) {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>.form-row {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>flex-direction: column;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;h1&gt;勤務収入管理（Excel保存）&lt;/h1&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;div class="card"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="form-row"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;記入日時（自動）&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="nowDisplay" class="readonly-box"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label for="place"&gt;出勤場所&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="place"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value=""&gt;選択してください&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="ジャンボ総本店"&gt;ジャンボ総本店&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="スイミング"&gt;スイミング&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label for="wage"&gt;時給（円）&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input type="number" id="wage" min="0" step="1" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="form-row"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;出勤時刻&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="time-select"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;select id="startHour"&gt;&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span&gt;:&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;select id="startMinute"&gt;&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;退勤時刻&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="time-select"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;select id="endHour"&gt;&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span&gt;:&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;select id="endMinute"&gt;&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;勤務時間（時間・自動）&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="workHoursPreview" class="readonly-box"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="form-group"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;label&gt;今回収入（円・自動）&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="incomePreview" class="readonly-box"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;button id="addBtn" type="button"&gt;行を追加&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;button id="clearBtn" type="button"&gt;画面上のデータを全削除&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;button id="excelBtn" type="button"&gt;Excel保存&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;div class="card"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h2&gt;明細一覧（この画面で入力した分）&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;table id="detailTable"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;#&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;記入日時&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;日付&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;出勤場所&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;出勤時刻&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;退勤時刻&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;勤務時間 (h)&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;時給&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;収入 (円)&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;th&gt;削除&lt;/th&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/tr&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/thead&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;tbody&gt;&lt;/tbody&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/table&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let records = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function pad2(n) { return n.toString().padStart(2,"0"); }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function getNowStrings() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const now = new Date();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const y = now.getFullYear();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const m = pad2(now.getMonth()+1);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const d = pad2(now.getDate());</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const hh = pad2(now.getHours());</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const mm = pad2(now.getMinutes());</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const ss = pad2(now.getSeconds());</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>date: `${y}-${m}-${d}`,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>timestamp: `${y}-${m}-${d} ${hh}:${mm}:${ss}`</p>
+<p class="p1"><span class="Apple-converted-space">      </span>};</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function updateNowDisplay() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.getElementById("nowDisplay").textContent = getNowStrings().timestamp;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function initTimeSelects() {</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const sh = document.getElementById("startHour");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const eh = document.getElementById("endHour");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const sm = document.getElementById("startMinute");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const em = document.getElementById("endMinute");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const emptyH1 = new Option("--","");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const emptyH2 = new Option("--","");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>sh.add(emptyH1); eh.add(emptyH2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>for (let h=0; h&lt;24; h++) {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const v = pad2(h);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>sh.add(new Option(v,v));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>eh.add(new Option(v,v));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const emptyM1 = new Option("--","");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const emptyM2 = new Option("--","");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>sm.add(emptyM1); em.add(emptyM2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>["00","15","30","45"].forEach(v=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>sm.add(new Option(v,v));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>em.add(new Option(v,v));</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function getTimeFromSelect(prefix){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const h = document.getElementById(prefix+"Hour").value;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const m = document.getElementById(prefix+"Minute").value;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(!h || !m) return "";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return `${h}:${m}`;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function parseTimeToMinutes(t){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(!t) return null;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const [h,m] = t.split(":").map(Number);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(isNaN(h)||isNaN(m)) return null;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return h*60+m;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function calcWorkHoursDecimal(start,end){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const s = parseTimeToMinutes(start);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const e = parseTimeToMinutes(end);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(s===null||e===null) return null;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>let diff = e-s;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(diff&lt;=0) diff += 24*60;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return Math.round(diff/60*100)/100;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function updatePreviews(){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const start = getTimeFromSelect("start");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const end <span class="Apple-converted-space">  </span>= getTimeFromSelect("end");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wage<span class="Apple-converted-space">  </span>= Number(document.getElementById("wage").value);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const hours = calcWorkHoursDecimal(start,end);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const hBox = document.getElementById("workHoursPreview");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const iBox = document.getElementById("incomePreview");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(hours===null){</p>
+<p class="p1"><span class="Apple-converted-space">        </span>hBox.textContent=""; iBox.textContent=""; return;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>hBox.textContent = hours.toFixed(2);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(!isNaN(wage)&amp;&amp;wage&gt;0){</p>
+<p class="p1"><span class="Apple-converted-space">        </span>iBox.textContent = Math.round(hours*wage).toLocaleString();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}else{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>iBox.textContent="";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function renderDetailTable(){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const tbody=document.querySelector("#detailTable tbody");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>tbody.innerHTML="";</p>
+<p class="p1"><span class="Apple-converted-space">      </span>records.forEach((r,idx)=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const tr=document.createElement("tr");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>tr.innerHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td class="right"&gt;${idx+1}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;${r.timestamp}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;${r.date}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;${r.place}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;${r.startTime}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;${r.endTime}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td class="right"&gt;${r.workHours.toFixed(2)}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td class="right"&gt;${r.wage}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td class="right"&gt;${r.income.toLocaleString()}&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;td&gt;&lt;button type="button" data-index="${idx}" class="delRowBtn"&gt;削除&lt;/button&gt;&lt;/td&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>tbody.appendChild(tr);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function buildDailySummary(){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const map={};</p>
+<p class="p1"><span class="Apple-converted-space">      </span>records.forEach(r=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(!map[r.date]) map[r.date]={};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(!map[r.date][r.place]) map[r.date][r.place]={hours:0,income:0};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>map[r.date][r.place].hours+=r.workHours;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>map[r.date][r.place].income+=r.income;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const rows=[];</p>
+<p class="p1"><span class="Apple-converted-space">      </span>Object.keys(map).sort().forEach(date=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>Object.keys(map[date]).forEach(place=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const s=map[date][place];</p>
+<p class="p1"><span class="Apple-converted-space">          </span>rows.push({</p>
+<p class="p1"><span class="Apple-converted-space">            </span>日付:date,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>出勤場所:place,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>勤務時間合計h:Number(s.hours.toFixed(2)),</p>
+<p class="p1"><span class="Apple-converted-space">            </span>収入合計円:Math.round(s.income)</p>
+<p class="p1"><span class="Apple-converted-space">          </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>return rows;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function exportToExcel(){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if(records.length===0){</p>
+<p class="p1"><span class="Apple-converted-space">        </span>alert("明細が1件もありません。まず行を追加してください。");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const all = records.map((r,idx)=&gt;({</p>
+<p class="p1"><span class="Apple-converted-space">        </span>No:idx+1,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>記入日時:r.timestamp,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>日付:r.date,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>出勤場所:r.place,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>出勤時刻:r.startTime,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>退勤時刻:r.endTime,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>勤務時間h:Number(r.workHours.toFixed(2)),</p>
+<p class="p1"><span class="Apple-converted-space">        </span>時給円:r.wage,</p>
+<p class="p1"><span class="Apple-converted-space">        </span>収入円:r.income</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wb = XLSX.utils.book_new();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wsAll = XLSX.utils.json_to_sheet(all);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>XLSX.utils.book_append_sheet(wb, wsAll, "明細一覧");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const jumbo = all.filter(r=&gt;r.出勤場所==="ジャンボ総本店");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wsJ<span class="Apple-converted-space">  </span>= XLSX.utils.json_to_sheet(jumbo);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>XLSX.utils.book_append_sheet(wb, wsJ, "ジャンボ総本店");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const swim = all.filter(r=&gt;r.出勤場所==="スイミング");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wsS<span class="Apple-converted-space">  </span>= XLSX.utils.json_to_sheet(swim);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>XLSX.utils.book_append_sheet(wb, wsS, "スイミング");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const summary = buildDailySummary();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wsSum = XLSX.utils.json_to_sheet(summary);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>XLSX.utils.book_append_sheet(wb, wsSum, "日別集計");</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const now=new Date();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const fileName=`勤務記録_${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}.xlsx`;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>const wbout = XLSX.write(wb,{bookType:"xlsx",type:"array"});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const blob<span class="Apple-converted-space">  </span>= new Blob([wbout],{type:"application/octet-stream"});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const url <span class="Apple-converted-space">  </span>= URL.createObjectURL(blob);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const a <span class="Apple-converted-space">    </span>= document.createElement("a");</p>
+<p class="p1"><span class="Apple-converted-space">      </span>a.href=url;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>a.download=fileName;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.body.appendChild(a);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>a.click();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.body.removeChild(a);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>setTimeout(()=&gt;URL.revokeObjectURL(url),1000);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>function setupEvents(){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>["startHour","startMinute","endHour","endMinute","wage"].forEach(id=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById(id).addEventListener("change",updatePreviews);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(id==="wage") document.getElementById(id).addEventListener("input",updatePreviews);</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.getElementById("addBtn").addEventListener("click",()=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const now=getNowStrings();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const place=document.getElementById("place").value;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const wage=Number(document.getElementById("wage").value);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const start=getTimeFromSelect("start");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const end<span class="Apple-converted-space">  </span>=getTimeFromSelect("end");</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(!place){alert("出勤場所を選択してください。");return;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(!wage||isNaN(wage)||wage&lt;=0){alert("時給を正しく入力してください。");return;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(!start||!end){alert("出勤時刻と退勤時刻を選択してください。");return;}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const hours=calcWorkHoursDecimal(start,end);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(hours===null){alert("勤務時間を計算できません。");return;}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const income=Math.round(hours*wage);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>records.push({</p>
+<p class="p1"><span class="Apple-converted-space">          </span>timestamp:now.timestamp,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>date:now.date,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>place,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>startTime:start,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>endTime:end,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>wage,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>workHours:hours,</p>
+<p class="p1"><span class="Apple-converted-space">          </span>income</p>
+<p class="p1"><span class="Apple-converted-space">        </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>renderDetailTable();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("startHour").value="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("startMinute").value="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("endHour").value="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("endMinute").value="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("workHoursPreview").textContent="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>document.getElementById("incomePreview").textContent="";</p>
+<p class="p1"><span class="Apple-converted-space">        </span>updateNowDisplay();</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.getElementById("clearBtn").addEventListener("click",()=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(confirm("この画面上の明細をすべて削除しますか？")){</p>
+<p class="p1"><span class="Apple-converted-space">          </span>records=[];</p>
+<p class="p1"><span class="Apple-converted-space">          </span>renderDetailTable();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.getElementById("excelBtn").addEventListener("click",exportToExcel);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>document.querySelector("#detailTable tbody").addEventListener("click",e=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>if(e.target.classList.contains("delRowBtn")){</p>
+<p class="p1"><span class="Apple-converted-space">          </span>const idx=Number(e.target.getAttribute("data-index"));</p>
+<p class="p1"><span class="Apple-converted-space">          </span>if(!isNaN(idx)){records.splice(idx,1);renderDetailTable();}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">      </span>});</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>initTimeSelects();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>updateNowDisplay();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setInterval(updateNowDisplay,1000);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>setupEvents();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
 </body>
 </html>
